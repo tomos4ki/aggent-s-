@@ -1,97 +1,132 @@
 
-import React, { useState, useEffect, useRef } from 'react';
-import logo from './logo.svg';
+import React, { useState } from 'react';
 import './App.css';
 
-function formatTime(minutes) {
-  if (minutes < 60) {
-    return `${minutes} minute${minutes !== 1 ? 's' : ''}`;
-  } else {
-    const h = Math.floor(minutes / 60);
-    const m = minutes % 60;
-    return `${h} hour${h !== 1 ? 's' : ''}${m > 0 ? `:${m} minute${m !== 1 ? 's' : ''}` : ''}`;
-  }
-}
-
 function App() {
-  const [user, setUser] = useState(() => {
-    const stored = localStorage.getItem('user');
-    return stored ? JSON.parse(stored) : null;
-  });
-  const [name, setName] = useState('');
-  const [password, setPassword] = useState('');
+
+  const [step, setStep] = useState(1);
+  const [prompt, setPrompt] = useState('');
+  const [image, setImage] = useState(null); // stores data URL
   const [error, setError] = useState('');
-  const [minutes, setMinutes] = useState(() => {
-    const stored = localStorage.getItem('usageMinutes');
-    return stored ? parseInt(stored, 10) : 0;
-  });
-  const timerRef = useRef(null);
+  const [navExpanded, setNavExpanded] = useState(false);
 
-  useEffect(() => {
-    if (user) {
-      timerRef.current = setInterval(() => {
-        setMinutes((prev) => {
-          const next = prev + 1;
-          localStorage.setItem('usageMinutes', next);
-          return next;
-        });
-      }, 60000); // 1 minute
-      return () => clearInterval(timerRef.current);
+  // Handle image upload
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        setImage(ev.target.result);
+        setError('');
+      };
+      reader.readAsDataURL(file);
     }
-  }, [user]);
+  };
 
-  const handleRegister = (e) => {
-    e.preventDefault();
-    if (!name || !password) {
-      setError('Please enter both name and password.');
+  // Handle "generate" (for now, just show a placeholder image)
+  const handleGenerate = () => {
+    if (!prompt.trim()) {
+      setError('Please enter a prompt.');
       return;
     }
-    const newUser = { name, password };
-    localStorage.setItem('user', JSON.stringify(newUser));
-    setUser(newUser);
+    // Placeholder: use a random image from unsplash
+    setImage(`https://source.unsplash.com/400x300/?${encodeURIComponent(prompt)}`);
     setError('');
   };
 
-  if (!user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-900 to-gray-900">
-        <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-xs">
-          <h2 className="text-2xl font-bold mb-6 text-center text-blue-900">Register</h2>
-          <form onSubmit={handleRegister} className="flex flex-col gap-4">
-            <input
-              type="text"
-              placeholder="Name"
-              value={name}
-              onChange={e => setName(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <input
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <button type="submit" className="bg-blue-700 text-white py-2 rounded hover:bg-blue-800 font-semibold transition">Register</button>
-            {error && <span className="text-red-600 text-sm text-center">{error}</span>}
-          </form>
-        </div>
-      </div>
-    );
-  }
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-900 to-gray-900">
-      <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md flex flex-col items-center">
-        <h2 className="text-2xl font-bold mb-4 text-blue-900">Welcome, {user.name}!</h2>
-        <p className="mb-6 text-gray-700">Time used: <span className="font-mono text-blue-700">{formatTime(minutes)}</span></p>
-        {/* Chat UI will go here next */}
-        <div className="mt-8 text-gray-400 italic">
-          Chat interface coming soon...
+
+  // Step navigation logic
+  const isFirstStep = step === 1;
+  const isLastStep = step === 2; // update this when more steps are added
+
+
+  // Navigation bar icons (simple SVGs for now)
+  const navItems = [
+    { icon: <span className="nav-icon">🏠</span>, label: 'Home' },
+    { icon: <span className="nav-icon">🖼️</span>, label: 'Gallery' },
+    { icon: <span className="nav-icon">📝</span>, label: 'Editor' },
+    { icon: <span className="nav-icon">❓</span>, label: 'Help' },
+  ];
+
+  // Header bar icons (simple SVGs for now)
+  const userIcon = <span className="header-icon" title="User">👤</span>;
+  const settingsIcon = <span className="header-icon" title="Settings">⚙️</span>;
+
+  // Main content for steps
+  const stepContent = (
+    <div className="step-content-inner">
+      <div className="image-side">
+        {image && (
+          <div className="image-preview">
+            <img src={image} alt={step === 1 ? 'Preview' : 'To edit'} />
+          </div>
+        )}
+      </div>
+      <div className="content-side">
+        {step === 1 && (
+          <>
+            <h1>Step 1: Create or Upload a Picture</h1>
+            <div className="input-group">
+              <input
+                type="text"
+                placeholder="Enter a prompt to generate an image"
+                value={prompt}
+                onChange={e => setPrompt(e.target.value)}
+              />
+              <button onClick={handleGenerate}>Generate</button>
+            </div>
+            <div className="input-group">
+              <input type="file" accept="image/*" onChange={handleImageUpload} />
+            </div>
+            {error && <div className="error-message">{error}</div>}
+          </>
+        )}
+        {step === 2 && (
+          <>
+            <h1>Step 2: Edit Your Image</h1>
+            <div className="editor-placeholder">Editor coming soon!</div>
+          </>
+        )}
+        <div className="step-nav">
+          <button className="step-btn" onClick={() => setStep(step - 1)} disabled={isFirstStep}>Previous</button>
+          <button className="step-btn" onClick={() => setStep(step + 1)} disabled={isLastStep || (step === 1 && !image)}>Next</button>
         </div>
       </div>
     </div>
   );
+
+  // Main app layout with nav and header
+  return (
+    <>
+      <div
+        className={`navbar${navExpanded ? ' expanded' : ''}`}
+        onMouseEnter={() => setNavExpanded(true)}
+        onMouseLeave={() => setNavExpanded(false)}
+      >
+        <div className="nav-icons">
+          {navItems.map((item, idx) => (
+            <div className="nav-item" key={idx}>
+              {item.icon}
+              <span className="nav-label">{item.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="header-bar">
+        {userIcon}
+        {settingsIcon}
+      </div>
+      <div className="fullscreen-step">
+        <div className="step-content">
+          {stepContent}
+        </div>
+      </div>
+    </>
+  );
+
+  return null;
 }
+
 
 export default App;
